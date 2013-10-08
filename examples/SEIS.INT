@@ -1,0 +1,21 @@
+APC compiling seis.pas
+defintarr A 10
+defint I
+proc main,0
+t0 = 0
+I = t0
+label __lab2
+t0 = 10
+t1 = I < t0
+gofalse t1,__lab1
+t0 = 2
+t2 = I * t0
+A[I] = t2
+t0 = 1
+t2 = I + t0
+I = t2
+goto __lab2
+label __lab1
+endproc
+
+APC finished compiling.

@@ -1,0 +1,50 @@
+APC compiling uno.pas
+defint Y
+defint X
+startargs
+defint B
+defint A
+endargs
+proc _GCD,2
+t0 = 0
+t1 = B == t0
+gofalse t1,__lab1
+param A
+param B
+call GCD
+goto __lab2
+label __lab1
+param B
+t0 = A % B
+param t0
+call GCD
+label __lab2
+endproc
+startargs
+defint B
+defint A
+endargs
+intfunc _GCD2,2
+t0 = 0
+t1 = B == t0
+gofalse t1,__lab3
+param A
+param B
+callfunc GCD2
+GCD2 = GCD2
+goto __lab4
+label __lab3
+param B
+t0 = A % B
+param t0
+callfunc GCD2
+GCD2 = GCD2
+label __lab4
+endproc
+proc main,0
+param X
+param Y
+call GCD
+endproc
+
+APC finished compiling.
