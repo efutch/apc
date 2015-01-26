@@ -11,7 +11,7 @@ using std::endl;
 
 extern int line,column;
 
-const int MAXERRORS = 12;
+const int MAXERRORS = 13;
 
 static char const *errors[MAXERRORS] =
 {
@@ -26,7 +26,8 @@ static char const *errors[MAXERRORS] =
    "Lvalue expected",
    "Procedure identifier expected",
    "Type mismatch",
-   "Wrong number of parameters in call"
+   "Wrong number of parameters in call",
+   "Identifier too long"
 };
 
 void error(const int errno)
@@ -35,5 +36,5 @@ void error(const int errno)
 		cerr << endl << errors[errno] << " in line "
 			  << line << ", column " << column << endl;
 	else
-		cerr << "Unknown error" << errno << ".  Report to efutch" << endl;
+		cerr << "Unknown error" << errno << "."   << endl;
 } // error()

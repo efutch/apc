@@ -1,4 +1,4 @@
-Program sort(Input,Output);
+Program sortasdfasdfasdfasdfasdfasdfasfasdfasdfasdfasdfasdf(Input,Output);
 
 Var
    a : array[0..10] of Integer;

@@ -113,6 +113,11 @@ of             { column += 2; return(OF_TOK); }
                   char idbuf[40];
                   int retval,i;
 
+		if (yyleng > 39)
+		{
+			error(ERR_IDTOOLONG);
+			yyterminate();
+		}
                   strcpy(idbuf,yytext);
 		  for (i = 0; i < yyleng ; i++)
 			idbuf[i] = toupper(idbuf[i]);
