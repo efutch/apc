@@ -28,10 +28,11 @@ int main(int argc,char *argv[])
 {
 	extern FILE *yyin;
    GlobalSymbolTable = new SymbolTable;
+/* Commented out August 2017 - Ubuntu version seems to have a problem with bison.skel and YYDEBUG	
 #ifdef YYDEBUG
    extern int yydebug;
 #endif
-
+*/
 	if (argc < 2)
 		usage();
 	yyin = fopen(argv[1],"rt");
@@ -42,9 +43,11 @@ int main(int argc,char *argv[])
 	}
 	printf("APC compiling %s\n",argv[1]);
    CurrentSymbolTable = GlobalSymbolTable;
+/* Corrected August 2017 - Ubuntu version seems to have a problem with bison.skel and YYDEBUG	
 #ifdef YYDEBUG
    yydebug = 1;
 #endif
+*/
 	while (yyparse())
 		;
 	printf("\nAPC finished compiling.\n");
