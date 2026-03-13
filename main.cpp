@@ -1,64 +1,143 @@
 /* main.cpp - programa principal para el compilador de pascal-a */
 /* Escrito por Egdares Futch H.                                 */
-/* Compilador : Borland C++ 3.0                                 */
-// Basado en el original APC, reescrito en 10-Oct-94
+/* Updated 2024: LLVM IR backend + x86 code generation          */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "token.h"
 #include "table.h"
 #include "parser.tab.h"
 #include "tmpvar.h"
+#include "llvmcodegen.h"
 
-// Inicializacion de contadores de lineas y columnas
+// LLVM initialization headers
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/raw_ostream.h>
 
+// Line/column tracking
 int column = 1;
-int line = 1;
+int line   = 1;
 
 extern int yyparse();
-
 void usage(void);
-int yyparse(void);
 
-SymbolTable *CurrentSymbolTable,*GlobalSymbolTable;
-TmpVars TmpVarGenerator;
+SymbolTable *CurrentSymbolTable, *GlobalSymbolTable;
+TmpVars      TmpVarGenerator;
 
-int main(int argc,char *argv[])
+// Build output filename: replace .pas extension with given ext
+static std::string makeOutputName(const char *input, const char *ext)
 {
-	extern FILE *yyin;
-   GlobalSymbolTable = new SymbolTable;
-/* Commented out August 2017 - Ubuntu version seems to have a problem with bison.skel and YYDEBUG	
-#ifdef YYDEBUG
-   extern int yydebug;
-#endif
-*/
-	if (argc < 2)
-		usage();
-	yyin = fopen(argv[1],"rt");
-	if (yyin == NULL)
-	{
-		perror("apc");
-		exit(1);
-	}
-	printf("APC compiling %s\n",argv[1]);
-   CurrentSymbolTable = GlobalSymbolTable;
-/* Corrected August 2017 - Ubuntu version seems to have a problem with bison.skel and YYDEBUG	
-#ifdef YYDEBUG
-   yydebug = 1;
-#endif
-*/
-	while (yyparse())
-		;
-	printf("\nAPC finished compiling.\n");
-	return 0;
-} /* main() */
+    std::string out(input);
+    auto dot = out.rfind('.');
+    if (dot != std::string::npos)
+        out = out.substr(0, dot);
+    out += ext;
+    return out;
+}
+
+int main(int argc, char *argv[])
+{
+    // ---- Initialize LLVM targets for x86 ----
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
+    extern FILE *yyin;
+    GlobalSymbolTable = new SymbolTable;
+
+    if (argc < 2)
+        usage();
+
+    // Determine output filenames
+    std::string llFile  = makeOutputName(argv[1], ".ll");
+    std::string asmFile = makeOutputName(argv[1], ".s");
+    std::string objFile = makeOutputName(argv[1], ".o");
+    std::string exeFile = makeOutputName(argv[1], "");
+
+    yyin = fopen(argv[1], "rt");
+    if (yyin == NULL) {
+        perror("apc");
+        exit(1);
+    }
+
+    printf("APC compiling %s\n", argv[1]);
+
+    // ---- Create global LLVM codegen instance ----
+    gCodeGen = new LLVMCodeGen(argv[1], llFile);
+
+    CurrentSymbolTable = GlobalSymbolTable;
+
+    while (yyparse())
+        ;
+
+    // ---- Finalize: write .ll file ----
+    gCodeGen->finish();
+    delete gCodeGen;
+    gCodeGen = nullptr;
+
+    printf("\nAPC finished compiling. LLVM IR -> %s\n", llFile.c_str());
+
+    // ---- Invoke llc to generate x86 assembly ----
+    {
+        char cmd[1024];
+        snprintf(cmd, sizeof(cmd),
+                 "llc -filetype=asm -march=aarch64 -o %s %s",
+                 asmFile.c_str(), llFile.c_str());
+        printf("Running: %s\n", cmd);
+        int rc = system(cmd);
+        if (rc != 0) {
+            fprintf(stderr, "llc failed (exit %d)\n", rc);
+            return 1;
+        }
+        printf("Assembly -> %s\n", asmFile.c_str());
+    }
+
+    // ---- Invoke llc again to produce object file ----
+    {
+        char cmd[1024];
+        snprintf(cmd, sizeof(cmd),
+                 "llc -filetype=obj -march=aarch64 -o %s %s",
+                 objFile.c_str(), llFile.c_str());
+        printf("Running: %s\n", cmd);
+        int rc = system(cmd);
+        if (rc != 0) {
+            fprintf(stderr, "llc (obj) failed (exit %d)\n", rc);
+            return 1;
+        }
+        printf("Object   -> %s\n", objFile.c_str());
+    }
+
+    // ---- Link with clang to produce executable ----
+    {
+        char cmd[1024];
+        snprintf(cmd, sizeof(cmd),
+                 "gcc -o %s %s",
+                 exeFile.c_str(), objFile.c_str());
+        printf("Running: %s\n", cmd);
+        int rc = system(cmd);
+        if (rc != 0) {
+            fprintf(stderr, "gcc link failed (exit %d)\n", rc);
+            return 1;
+        }
+        printf("Executable -> %s\n", exeFile.c_str());
+    }
+
+    printf("\nDone.\n");
+    return 0;
+}
 
 void usage(void)
 {
-	printf("APC      : A Pascal Compiler (as defined in Aho, Sethi & Ullman)\n"
-			 "           This compiler generates a .ASM file to be input to\n"
-			 "           Turbo Assembler >= 2.0\n"
-			 "\n Usage : apc filename.pas\n");
-	exit(1);
-} /* usage() */
+    printf("APC      : A Pascal Compiler (LLVM backend)\n"
+           "           Compiles Pascal-A source to AArch64 via LLVM IR.\n"
+           "           Produces: <file>.ll  (LLVM IR)\n"
+           "                     <file>.s   (AArch64 assembly)\n"
+           "                     <file>.o   (object file)\n"
+           "                     <file>     (executable)\n"
+           "\n Usage : apc filename.pas\n");
+    exit(1);
+}
