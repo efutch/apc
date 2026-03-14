@@ -1,5 +1,6 @@
 apc - A Pascal Compiler, basado en la gramatica del apendice del libro del Dragon
-Copyright (c) 1994 - Egdares Futch H. efutch@gmail.com
+apc - A Pascal Compiler, based on the grammar from the Dragon's book appendix
+Copyright (c) 1994 - E. Futch H. efutch@gmail.com
 
 This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
