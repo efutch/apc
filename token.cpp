@@ -17,7 +17,7 @@ Token::Token(char *nameval, int toktype = ID,int t = INT_TOK)
 		name = new char[strlen(nameval) + 1];
 		if (name == NULL)
 		{
-			error(ERR_NOMEM);
+			apc_error(ERR_NOMEM);
 		}
 		strcpy(name,nameval);
 	}

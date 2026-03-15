@@ -30,11 +30,11 @@ static char const *errors[MAXERRORS] =
    "Identifier too long"
 };
 
-void error(const int errno)
+void apc_error(const int errcode)
 {
-	if (errno < MAXERRORS)
-		cerr << endl << errors[errno] << " in line "
+	if (errcode < MAXERRORS)
+		cerr << endl << errors[errcode] << " in line "
 			  << line << ", column " << column << endl;
 	else
-		cerr << "Unknown error" << errno << "."   << endl;
+		cerr << "Unknown error" << errcode << "."   << endl;
 } // error()

@@ -50,11 +50,11 @@ mulop           [*/]
 <comment>"}" 			{ ++column; BEGIN(INITIAL); }
 <comment>"{"			|
 <comment>"(*"			{
-								error(ERR_NESTEDCOMMENT);
+								apc_error(ERR_NESTEDCOMMENT);
 								yyterminate();
 							}
 <comment><<EOF>>	{
-							error(ERR_EOFCOMMENT);
+							apc_error(ERR_EOFCOMMENT);
 							yyterminate();
 						}
 <comment>.				{ ++column; }
@@ -115,7 +115,7 @@ of             { column += 2; return(OF_TOK); }
 
 		if (yyleng > 39)
 		{
-			error(ERR_IDTOOLONG);
+			apc_error(ERR_IDTOOLONG);
 			yyterminate();
 		}
                   strcpy(idbuf,yytext);
@@ -144,13 +144,13 @@ of             { column += 2; return(OF_TOK); }
                         }
                      } // yylval.tokenpos == NULL
                      else
-                        error(ERR_DUPID);
+                        apc_error(ERR_DUPID);
                   } // CanInsert
                   else
                   {
                      yylval.tokenpos = CurrentSymbolTable->lookup(idbuf,GLOBALSEARCH);
                      if (yylval.tokenpos == NULL)
-                        error(ERR_NDECLID);
+                        apc_error(ERR_NDECLID);
                      else
                         retval = yylval.tokenpos->GetTokenType();
                   }
@@ -172,7 +172,7 @@ of             { column += 2; return(OF_TOK); }
 ">"       { ++column   ; yylval.opval = 5; return(RELOP); }
 
 .			{
-			  error(ERR_LEXICAL);
+			  apc_error(ERR_LEXICAL);
 			  yyterminate();
 			}
 

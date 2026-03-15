@@ -319,7 +319,7 @@ subprogram_head	:  PROC_TOK
                               printf("charfunc _%s,%d\n",$<tokenpos>3->GetName(),$<tokenpos>3->GetParamCount());
                               break;
                            default:
-                              error(ERR_TYPEMISMATCH);
+                              apc_error(ERR_TYPEMISMATCH);
                         }
                      }
                      ';'
@@ -449,7 +449,7 @@ variable	:	ID
 procedure_statement	:	PROC_ID
                         {
                            if ($<tokenpos>1->GetParamCount() != 0)
-                              error(ERR_PARAMCOUNT);
+                              apc_error(ERR_PARAMCOUNT);
                            else
                               printf("call %s\n",$<tokenpos>1->GetName());
                         }
@@ -459,7 +459,7 @@ procedure_statement	:	PROC_ID
                         ')'
                         {
                            if ($<tokenpos>1->GetParamCount() != $<intval>3)
-                              error(ERR_PARAMCOUNT);
+                              apc_error(ERR_PARAMCOUNT);
                            else
                               printf("call %s\n",$<tokenpos>1->GetName());
                         }
@@ -512,7 +512,7 @@ simple_expression	:	term
                      {
                         if (($<tokenpos>1->GetType() != INT_TOK) ||
                             ($<tokenpos>3->GetType() != INT_TOK))
-                               error(ERR_TYPEMISMATCH);
+                               apc_error(ERR_TYPEMISMATCH);
                         Token *tmp = TmpVarGenerator.NewTemp();
                         printf("%s = %s + %s\n",tmp->GetName(),
                                                 $<tokenpos>1->GetName(),
@@ -528,7 +528,7 @@ simple_expression	:	term
                         if (($<tokenpos>1->GetType() != INT_TOK) ||
                             ($<tokenpos>3->GetType() != INT_TOK) ||
                             ($<tokenpos>1->GetType() != $<tokenpos>3->GetType()))
-                               error(ERR_TYPEMISMATCH);
+                               apc_error(ERR_TYPEMISMATCH);
                         Token *tmp = TmpVarGenerator.NewTemp();
                         printf("%s = %s - %s\n",tmp->GetName(),
                                                 $<tokenpos>1->GetName(),
@@ -544,7 +544,7 @@ simple_expression	:	term
                         if (($<tokenpos>1->GetType() != INT_TOK) ||
                             ($<tokenpos>3->GetType() != INT_TOK) ||
                             ($<tokenpos>1->GetType() != $<tokenpos>3->GetType()))
-                               error(ERR_TYPEMISMATCH);
+                               apc_error(ERR_TYPEMISMATCH);
                         Token *tmp = TmpVarGenerator.NewTemp();
                         printf("%s = %s | %s\n",tmp->GetName(),
                                                 $<tokenpos>1->GetName(),
@@ -566,7 +566,7 @@ term	:	factor
             if (($<tokenpos>1->GetType() != INT_TOK) ||
                 ($<tokenpos>3->GetType() != INT_TOK) ||
                 ($<tokenpos>1->GetType() != $<tokenpos>3->GetType()))
-                   error(ERR_TYPEMISMATCH);
+                   apc_error(ERR_TYPEMISMATCH);
             Token *tmp = TmpVarGenerator.NewTemp();
             printf("%s = %s * %s\n",tmp->GetName(),
                                     $<tokenpos>1->GetName(),
@@ -582,7 +582,7 @@ term	:	factor
             if (($<tokenpos>1->GetType() != INT_TOK) ||
                 ($<tokenpos>3->GetType() != INT_TOK) ||
                 ($<tokenpos>1->GetType() != $<tokenpos>3->GetType()))
-                   error(ERR_TYPEMISMATCH);
+                   apc_error(ERR_TYPEMISMATCH);
             Token *tmp = TmpVarGenerator.NewTemp();
             printf("%s = %s / %s\n",tmp->GetName(),
                                     $<tokenpos>1->GetName(),
@@ -598,7 +598,7 @@ term	:	factor
             if (($<tokenpos>1->GetType() != INT_TOK) ||
                 ($<tokenpos>3->GetType() != INT_TOK) ||
                 ($<tokenpos>1->GetType() != $<tokenpos>3->GetType()))
-                   error(ERR_TYPEMISMATCH);
+                   apc_error(ERR_TYPEMISMATCH);
             Token *tmp = TmpVarGenerator.NewTemp();
             printf("%s = %s & %s\n",tmp->GetName(),
                                     $<tokenpos>1->GetName(),
@@ -614,7 +614,7 @@ term	:	factor
             if (($<tokenpos>1->GetType() != INT_TOK) ||
                 ($<tokenpos>3->GetType() != INT_TOK) ||
                 ($<tokenpos>1->GetType() != $<tokenpos>3->GetType()))
-                   error(ERR_TYPEMISMATCH);
+                   apc_error(ERR_TYPEMISMATCH);
             Token *tmp = TmpVarGenerator.NewTemp();
             printf("%s = %s / %s\n",tmp->GetName(),
                                     $<tokenpos>1->GetName(),
@@ -630,7 +630,7 @@ term	:	factor
             if (($<tokenpos>1->GetType() != INT_TOK) ||
                 ($<tokenpos>3->GetType() != INT_TOK) ||
                 ($<tokenpos>1->GetType() != $<tokenpos>3->GetType()))
-                   error(ERR_TYPEMISMATCH);
+                   apc_error(ERR_TYPEMISMATCH);
             Token *tmp = TmpVarGenerator.NewTemp();
             printf("%s = %s %% %s\n",tmp->GetName(),
                                     $<tokenpos>1->GetName(),
@@ -659,7 +659,7 @@ factor	:	ID
          |  FUNC_ID
             {
                if ($1->GetParamCount() != 0)
-                  error(ERR_PARAMCOUNT);
+                  apc_error(ERR_PARAMCOUNT);
                else
                   {
                      printf("callfunc %s\n",$<tokenpos>1->GetName());
@@ -672,7 +672,7 @@ factor	:	ID
             ')'
             {
                if ($<tokenpos>1->GetParamCount() != $<intval>3)
-                  error(ERR_PARAMCOUNT);
+                  apc_error(ERR_PARAMCOUNT);
                else
                {
                   printf("callfunc %s\n",$<tokenpos>1->GetName());
