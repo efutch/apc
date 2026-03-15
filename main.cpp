@@ -1,6 +1,6 @@
 /* main.cpp - programa principal para el compilador de pascal-a */
 /* Escrito por Egdares Futch H.                                 */
-/* Compilador : Borland C++ 3.0                                 */
+/* Compilador original: Borland C++ 3.0                         */
 // Basado en el original APC, reescrito en 10-Oct-94
 
 #include <stdio.h>
@@ -57,7 +57,7 @@ int main(int argc,char *argv[])
 void usage(void)
 {
 	printf("APC      : A Pascal Compiler (as defined in Aho, Sethi & Ullman)\n"
-			 "           This compiler generates a .ASM file to be input to\n"
+			 "           This version generates IR, future versions will generate .ASM file for\n"
 			 "           Turbo Assembler >= 2.0\n"
 			 "\n Usage : apc filename.pas\n");
 	exit(1);
