@@ -6,6 +6,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/TargetParser/Triple.h>
 
 #include <cassert>
 
@@ -23,7 +24,7 @@ LLVMCodeGen::LLVMCodeGen(const std::string &moduleName,
       labelCounter_(0),
       tempCounter_(0)
 {
-    mod_->setTargetTriple("aarch64-linux-gnu");
+    mod_->setTargetTriple(llvm::Triple("aarch64-linux-gnu"));
 }
 
 LLVMCodeGen::~LLVMCodeGen() {}
