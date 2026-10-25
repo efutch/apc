@@ -14,7 +14,7 @@ extern SymbolTable CompilerSymbolTable;
 
 Token *TmpVars::NewTemp(int tokentype)
 {
-   char namebuf[10];
+   char namebuf[32];
    int tmpvarname = 0;
 
    while (varname[tmpvarname++])
