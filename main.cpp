@@ -1,5 +1,7 @@
 /* main.cpp - programa principal para el compilador de pascal-a */
 /* Escrito por Egdares Futch H.                                 */
+/* Compilador original: Borland C++ 3.0                         */
+// Basado en el original APC, reescrito en 10-Oct-94
 /* Updated 2024: LLVM IR backend + x86 code generation          */
 
 #include <stdio.h>

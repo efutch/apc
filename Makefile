@@ -1,4 +1,5 @@
 # Makefile for APC - A Pascal Compiler (LLVM backend)
+# Based on Aho, Sethi & Ullman (Dragon Book)
 # Usage: make
 # Requires: bison, flex, clang/g++ with LLVM dev libraries
 #   Ubuntu: sudo apt install bison flex llvm-dev clang
@@ -28,29 +29,29 @@ parser.tab.c parser.tab.h: parser.y
 lex.yy.c: lexer.l parser.tab.h
 	flex lexer.l
 
-parser.tab.o: parser.tab.c
+parser.tab.o: parser.tab.c parser.tab.h llvmcodegen.h
 	$(CXX) $(CXXFLAGS) -c parser.tab.c
 
-lex.yy.o: lex.yy.c
+lex.yy.o: lex.yy.c parser.tab.h
 	$(CXX) $(CXXFLAGS) -c lex.yy.c
 
 llvmcodegen.o: llvmcodegen.cpp llvmcodegen.h
 	$(CXX) $(CXXFLAGS) -c llvmcodegen.cpp
 
-main.o: main.cpp llvmcodegen.h
+main.o: main.cpp llvmcodegen.h parser.tab.h
 	$(CXX) $(CXXFLAGS) -c main.cpp
 
-token.o: token.cpp token.h
-	$(CXX) $(CXXFLAGS) -c token.cpp
-
-table.o: table.cpp table.h
+table.o: table.cpp table.h parser.tab.h
 	$(CXX) $(CXXFLAGS) -c table.cpp
 
-tmpvar.o: tmpvar.cpp tmpvar.h
-	$(CXX) $(CXXFLAGS) -c tmpvar.cpp
+token.o: token.cpp token.h parser.tab.h
+	$(CXX) $(CXXFLAGS) -c token.cpp
 
 error.o: error.cpp error.h
 	$(CXX) $(CXXFLAGS) -c error.cpp
+
+tmpvar.o: tmpvar.cpp tmpvar.h parser.tab.h
+	$(CXX) $(CXXFLAGS) -c tmpvar.cpp
 
 clean:
 	rm -f *.o apc parser.tab.c parser.tab.h lex.yy.c *.ll *.s *.out

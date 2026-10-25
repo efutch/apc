@@ -17,4 +17,4 @@ const int ERR_TYPEMISMATCH   = 10;
 const int ERR_PARAMCOUNT     = 11;
 const int ERR_IDTOOLONG	= 12;
 
-void error(const int);
+void apc_error(const int);
