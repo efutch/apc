@@ -3,15 +3,11 @@ apc - A Pascal Compiler, based on the grammar from the Dragon's book appendix
 
 Copyright (c) 1994,2026 - E. Futch H. efutch@gmail.com
 
-This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+Licensed under the MIT License: you may use, copy, modify and distribute this
+software, including in derivative works, provided the copyright notice and
+the permission notice are kept. See the LICENSE file for the full text.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+Licenciado bajo la Licencia MIT: puede usar, copiar, modificar y distribuir
+este software, incluso en obras derivadas, siempre que se conserven el aviso
+de copyright y el aviso de permiso. Vea el archivo LICENSE para el texto
+completo.
