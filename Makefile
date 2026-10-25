@@ -53,7 +53,10 @@ error.o: error.cpp error.h
 tmpvar.o: tmpvar.cpp tmpvar.h parser.tab.h
 	$(CXX) $(CXXFLAGS) -c tmpvar.cpp
 
+test: apc
+	./tests/run_tests.sh
+
 clean:
 	rm -f *.o apc parser.tab.c parser.tab.h lex.yy.c *.ll *.s *.out
 
-.PHONY: all clean
+.PHONY: all test clean

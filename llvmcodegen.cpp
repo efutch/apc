@@ -126,75 +126,58 @@ llvm::Function* LLVMCodeGen::createFunction(
     return fn;
 }
 
+// Create the function, make it current, then give each parameter (and the
+// result, for functions) a stack slot. The context must be pushed first:
+// createEntryAlloca() allocates in the function on top of funcStack_.
+void LLVMCodeGen::beginFunction(const std::string &name,
+                                llvm::Type *retTy,
+                                const std::vector<std::pair<std::string,int>> &params,
+                                const std::string &resultVar)
+{
+    auto *fn = createFunction(name, retTy, params);
+    auto *bb = llvm::BasicBlock::Create(ctx_, "entry", fn);
+    builder_->SetInsertPoint(bb);
+
+    FunctionContext fc;
+    fc.func    = fn;
+    fc.entryBB = bb;
+    funcStack_.push(std::move(fc));
+    auto &cur = funcStack_.top();
+
+    for (auto &arg : fn->args()) {
+        auto *alloca = createEntryAlloca(arg.getName().str(), arg.getType());
+        builder_->CreateStore(&arg, alloca);
+        cur.locals[arg.getName().str()] = alloca;
+        cur.paramNames.push_back(arg.getName().str());
+    }
+
+    if (!retTy->isVoidTy()) {
+        cur.retSlot = createEntryAlloca(name + "__retval", retTy);
+        builder_->CreateStore(llvm::Constant::getNullValue(retTy), cur.retSlot);
+        cur.locals[resultVar] = cur.retSlot;
+    }
+
+    labelBlocks_.clear();
+}
+
 void LLVMCodeGen::startProc(const std::string &name,
                             const std::vector<std::pair<std::string,int>> &params)
 {
-    auto *fn = createFunction(name, voidTy(), params);
-    auto *bb = llvm::BasicBlock::Create(ctx_, "entry", fn);
-    builder_->SetInsertPoint(bb);
-
-    FunctionContext fc;
-    fc.func    = fn;
-    fc.entryBB = bb;
-
-    for (auto &arg : fn->args()) {
-        llvm::Type *ty = arg.getType();
-        auto *alloca = createEntryAlloca(arg.getName().str(), ty);
-        builder_->CreateStore(&arg, alloca);
-        fc.locals[arg.getName().str()] = alloca;
-        fc.paramNames.push_back(arg.getName().str());
-    }
-
-    funcStack_.push(std::move(fc));
-    labelBlocks_.clear();
+    beginFunction(name, voidTy(), params, "");
 }
 
 void LLVMCodeGen::startIntFunc(const std::string &name,
-                               const std::vector<std::pair<std::string,int>> &params)
+                               const std::vector<std::pair<std::string,int>> &params,
+                               const std::string &resultVar)
 {
-    auto *fn = createFunction(name, intTy(), params);
-    auto *bb = llvm::BasicBlock::Create(ctx_, "entry", fn);
-    builder_->SetInsertPoint(bb);
-
-    FunctionContext fc;
-    fc.func    = fn;
-    fc.entryBB = bb;
-
-    for (auto &arg : fn->args()) {
-        auto *alloca = createEntryAlloca(arg.getName().str(), arg.getType());
-        builder_->CreateStore(&arg, alloca);
-        fc.locals[arg.getName().str()] = alloca;
-        fc.paramNames.push_back(arg.getName().str());
-    }
-    auto *retSlot = createEntryAlloca(name + "__retval", intTy());
-    fc.locals[name] = retSlot;
-
-    funcStack_.push(std::move(fc));
-    labelBlocks_.clear();
+    beginFunction(name, intTy(), params, resultVar);
 }
 
 void LLVMCodeGen::startCharFunc(const std::string &name,
-                                const std::vector<std::pair<std::string,int>> &params)
+                                const std::vector<std::pair<std::string,int>> &params,
+                                const std::string &resultVar)
 {
-    auto *fn = createFunction(name, charTy(), params);
-    auto *bb = llvm::BasicBlock::Create(ctx_, "entry", fn);
-    builder_->SetInsertPoint(bb);
-
-    FunctionContext fc;
-    fc.func    = fn;
-    fc.entryBB = bb;
-
-    for (auto &arg : fn->args()) {
-        auto *alloca = createEntryAlloca(arg.getName().str(), arg.getType());
-        builder_->CreateStore(&arg, alloca);
-        fc.locals[arg.getName().str()] = alloca;
-        fc.paramNames.push_back(arg.getName().str());
-    }
-    auto *retSlot = createEntryAlloca(name + "__retval", charTy());
-    fc.locals[name] = retSlot;
-
-    funcStack_.push(std::move(fc));
-    labelBlocks_.clear();
+    beginFunction(name, charTy(), params, resultVar);
 }
 
 void LLVMCodeGen::endProc()
@@ -207,10 +190,9 @@ void LLVMCodeGen::endProc()
         if (fn->getReturnType()->isVoidTy()) {
             builder_->CreateRetVoid();
         } else {
-            std::string retSlotName = std::string(fn->getName()) + "__retval";
-            if (fc.locals.count(retSlotName)) {
+            if (fc.retSlot) {
                 auto *val = builder_->CreateLoad(fn->getReturnType(),
-                                                 fc.locals[retSlotName], "retval");
+                                                 fc.retSlot, "retval");
                 builder_->CreateRet(val);
             } else {
                 builder_->CreateRet(llvm::Constant::getNullValue(fn->getReturnType()));
@@ -550,12 +532,23 @@ void LLVMCodeGen::emitGoFalse(const std::string &cond, int labelId)
 // Calls
 // ---------------------------------------------------------------------------
 
-void LLVMCodeGen::pushArg(const std::string &name) { pendingArgs_.push_back(name); }
-
-std::vector<std::string> LLVMCodeGen::flushArgs()
+// Copy the argument's current value into a fresh temporary: the parser
+// frees and reuses its own temporaries before the call is emitted.
+void LLVMCodeGen::pushArg(const std::string &name)
 {
-    auto args = pendingArgs_;
-    pendingArgs_.clear();
+    std::string t = newTemp();
+    storeName(t, loadName(name));
+    pendingArgs_.push_back(t);
+}
+
+// Take the last `count` pushed arguments, leaving any belonging to an
+// enclosing call that is still being parsed.
+std::vector<std::string> LLVMCodeGen::flushArgs(int count)
+{
+    assert(count >= 0 && (size_t)count <= pendingArgs_.size());
+    auto first = pendingArgs_.end() - count;
+    std::vector<std::string> args(first, pendingArgs_.end());
+    pendingArgs_.erase(first, pendingArgs_.end());
     return args;
 }
 

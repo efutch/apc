@@ -25,6 +25,7 @@ struct FunctionContext {
     llvm::BasicBlock                       *entryBB;
     std::map<std::string, llvm::AllocaInst*> locals;
     std::vector<std::string>                paramNames;
+    llvm::AllocaInst                       *retSlot = nullptr;
 };
 
 class LLVMCodeGen {
@@ -43,10 +44,13 @@ public:
     // Procedures / Functions
     void startProc(const std::string &name,
                    const std::vector<std::pair<std::string,int>> &params);
+    // resultVar is the name assigned to in "f := expr" to set the result
     void startIntFunc(const std::string &name,
-                      const std::vector<std::pair<std::string,int>> &params);
+                      const std::vector<std::pair<std::string,int>> &params,
+                      const std::string &resultVar);
     void startCharFunc(const std::string &name,
-                       const std::vector<std::pair<std::string,int>> &params);
+                       const std::vector<std::pair<std::string,int>> &params,
+                       const std::string &resultVar);
     void endProc();
 
     // Locals
@@ -93,7 +97,7 @@ public:
 
     // Pending args
     void pushArg(const std::string &name);
-    std::vector<std::string> flushArgs();
+    std::vector<std::string> flushArgs(int count);
 
     // Scope query
     bool isGlobalScope() const { return funcStack_.empty(); }
@@ -127,6 +131,10 @@ private:
     llvm::Function*   createFunction(const std::string &name,
                                      llvm::Type *retTy,
                                      const std::vector<std::pair<std::string,int>> &params);
+    void              beginFunction(const std::string &name,
+                                    llvm::Type *retTy,
+                                    const std::vector<std::pair<std::string,int>> &params,
+                                    const std::string &resultVar);
 };
 
 extern LLVMCodeGen *gCodeGen;

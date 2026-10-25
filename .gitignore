@@ -10,3 +10,9 @@ apc
 # Compiler output for the examples (.ll, .s, .o and executables)
 examples/*
 !examples/*.pas
+
+# Test build output
+tests/*
+!tests/*.pas
+!tests/*.c
+!tests/*.sh

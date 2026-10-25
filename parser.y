@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <algorithm>
 
 #include "protos.h"
 #include "token.h"
@@ -26,6 +27,16 @@ void yyerror(const char *);
 
 // Pending procedure/function argument types for startProc/startFunc
 static std::vector<std::pair<std::string,int>> gPendingParams;
+// Set while parsing a subprogram's parameter list
+static int gInParams;
+// Start of the current identifier_list group within gPendingParams
+static size_t gParamGroupStart;
+
+// Record a parameter instead of declaring a variable
+static void addPendingParam(const char *name, int icgType)
+{
+   gPendingParams.push_back({name, icgType});
+}
 
 %}
 
@@ -100,13 +111,13 @@ program :
             ')'
             disallow_ids
             ';'
+            declarations
             subprogram_declarations
             {
-               // Start main BEFORE its local declarations
+               // Program variables are globals; main only owns the body
                gPendingParams.clear();
                gCodeGen->startProc("main", gPendingParams);
             }
-            declarations
             compound_statement
             '.'
             {
@@ -125,7 +136,9 @@ identifier_list  :  ID
                        switch ($<typeinfo>2[0])
                        {
                           case INT_TOK:
-                             if (CanInsert)
+                             if (gInParams)
+                                addPendingParam($<tokenpos>1->GetName(), ICG_INT);
+                             else if (CanInsert)
                              {
                                 if (gCodeGen->isGlobalScope())
                                    gCodeGen->declareGlobalInt($<tokenpos>1->GetName());
@@ -134,7 +147,9 @@ identifier_list  :  ID
                              }
                              break;
                           case CHAR_TOK:
-                             if (CanInsert)
+                             if (gInParams)
+                                addPendingParam($<tokenpos>1->GetName(), ICG_CHAR);
+                             else if (CanInsert)
                              {
                                 if (gCodeGen->isGlobalScope())
                                    gCodeGen->declareGlobalChar($<tokenpos>1->GetName());
@@ -167,10 +182,13 @@ identifier_list  :  ID
                        $<typeinfo>$[3] = $<typeinfo>2[3];
                        $<typeinfo>$[4] = $<typeinfo>2[4];
                        $<typeinfo>$[4]++;
-                       // Also register as pending param if inside subprogram head
-                       if (CanInsert && !gPendingParams.empty())
+                       // typed_id_list is right-recursive, so this group's
+                       // parameters were recorded last-to-first
+                       if (gInParams)
                        {
-                          // params accumulate separately; just track type
+                          std::reverse(gPendingParams.begin() + gParamGroupStart,
+                                       gPendingParams.end());
+                          gParamGroupStart = gPendingParams.size();
                        }
                     }
                  ;
@@ -183,7 +201,9 @@ typed_id_list    :  ','
                        switch ($<typeinfo>3[0])
                        {
                           case INT_TOK:
-                             if (CanInsert)
+                             if (gInParams)
+                                addPendingParam($<tokenpos>2->GetName(), ICG_INT);
+                             else if (CanInsert)
                              {
                                 if (gCodeGen->isGlobalScope())
                                    gCodeGen->declareGlobalInt($<tokenpos>2->GetName());
@@ -192,7 +212,9 @@ typed_id_list    :  ','
                              }
                              break;
                           case CHAR_TOK:
-                             if (CanInsert)
+                             if (gInParams)
+                                addPendingParam($<tokenpos>2->GetName(), ICG_CHAR);
+                             else if (CanInsert)
                              {
                                 if (gCodeGen->isGlobalScope())
                                    gCodeGen->declareGlobalChar($<tokenpos>2->GetName());
@@ -334,23 +356,30 @@ subprogram_head  :  PROC_TOK
                        $<tokenpos>3->SetFuncReturnType($<typeinfo>8[0]);
                        std::string funcName = "_" + std::string($<tokenpos>3->GetName());
                        if ($<typeinfo>8[0] == INT_TOK)
-                          gCodeGen->startIntFunc(funcName, gPendingParams);
+                          gCodeGen->startIntFunc(funcName, gPendingParams,
+                                                 $<tokenpos>3->GetName());
                        else
-                          gCodeGen->startCharFunc(funcName, gPendingParams);
+                          gCodeGen->startCharFunc(funcName, gPendingParams,
+                                                  $<tokenpos>3->GetName());
                        gPendingParams.clear();
                     }
                     ';'
                  ;
 
 arguments  :  '('
+              {
+                  gInParams = 1;
+                  gParamGroupStart = 0;
+              }
               parameter_list
               ')'
               {
-                  $<typeinfo>$[0] = $<typeinfo>2[0];
-                  $<typeinfo>$[1] = $<typeinfo>2[1];
-                  $<typeinfo>$[2] = $<typeinfo>2[2];
-                  $<typeinfo>$[3] = $<typeinfo>2[3];
-                  $<typeinfo>$[4] = $<typeinfo>2[4];
+                  gInParams = 0;
+                  $<typeinfo>$[0] = $<typeinfo>3[0];
+                  $<typeinfo>$[1] = $<typeinfo>3[1];
+                  $<typeinfo>$[2] = $<typeinfo>3[2];
+                  $<typeinfo>$[3] = $<typeinfo>3[3];
+                  $<typeinfo>$[4] = $<typeinfo>3[4];
               }
            |  { $<typeinfo>$[4] = 0; }
            ;
@@ -364,7 +393,8 @@ parameter_list  :  identifier_list
                        $<typeinfo>$[1] = $<typeinfo>3[1];
                        $<typeinfo>$[2] = $<typeinfo>3[2];
                        $<typeinfo>$[3] = $<typeinfo>3[3];
-                       $<typeinfo>$[4] = $<typeinfo>3[4];
+                       // Total parameter count across all groups
+                       $<typeinfo>$[4] = $<typeinfo>1[4] + $<typeinfo>3[4];
                    }
                ;
 
@@ -465,8 +495,8 @@ procedure_statement  :  PROC_ID
                               apc_error(ERR_PARAMCOUNT);
                            else
                            {
-                              std::string procName = std::string($<tokenpos>1->GetName());
-                              std::vector<std::string> args = gCodeGen->flushArgs();
+                              std::string procName = "_" + std::string($<tokenpos>1->GetName());
+                              std::vector<std::string> args = gCodeGen->flushArgs(0);
                               gCodeGen->emitCallProc(procName, args);
                            }
                         }
@@ -475,12 +505,13 @@ procedure_statement  :  PROC_ID
                         expression_list
                         ')'
                         {
+                           // Always take this call's arguments, even on a count error
+                           std::vector<std::string> args = gCodeGen->flushArgs($<intval>3);
                            if ($<tokenpos>1->GetParamCount() != $<intval>3)
                               apc_error(ERR_PARAMCOUNT);
                            else
                            {
-                              std::string procName = std::string($<tokenpos>1->GetName());
-                              std::vector<std::string> args = gCodeGen->flushArgs();
+                              std::string procName = "_" + std::string($<tokenpos>1->GetName());
                               gCodeGen->emitCallProc(procName, args);
                            }
                         }
@@ -696,12 +727,13 @@ factor  :  ID
            expression_list
            ')'
            {
+              // Always take this call's arguments, even on a count error
+              std::vector<std::string> args = gCodeGen->flushArgs($<intval>3);
               if ($<tokenpos>1->GetParamCount() != $<intval>3)
                  apc_error(ERR_PARAMCOUNT);
               else
               {
                  std::string funcName = "_" + std::string($<tokenpos>1->GetName());
-                 std::vector<std::string> args = gCodeGen->flushArgs();
                  Token *tmp = TmpVarGenerator.NewTemp();
                  std::string result = gCodeGen->emitCallFunc(funcName, args);
                  gCodeGen->emitAssign(tmp->GetName(), result);
